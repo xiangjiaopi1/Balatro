@@ -5,7 +5,25 @@ from typing import List
 
 from .game import SimpleGame
 
-WELCOME = """欢迎来到简化版 Balatro！\n- 牌组只有标准扑克牌，没有小丑/星球/塔罗。\n- 每轮从 8 张手牌中选择 5 张打出，系统会计算得分。\n- 你可以弃牌来刷新手牌。出牌和弃牌在一局内各最多 5 次。\n- 使用指令：\n    p 0 1 2 3 4  出牌\n    d 0 1 2      弃牌\n    q             退出游戏\n"""
+
+def _launch_ui() -> None:
+    """Start the Tk UI if a display is available."""
+
+    try:
+        from .ui import BalatroUI  # local import to avoid Tk dependency for CLI users
+        import tkinter as tk
+    except Exception as exc:  # pragma: no cover - runtime only
+        raise RuntimeError("无法启动图形界面：Tkinter 未安装或不可用。") from exc
+
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:  # pragma: no cover - runtime only
+        raise RuntimeError("无法启动图形界面：当前环境没有显示器。") from exc
+
+    BalatroUI(root)
+    root.mainloop()
+
+WELCOME = """欢迎来到简化版 Balatro！\n- 如果想直接看到图形界面，请运行：balatro --ui\n- 牌组只有标准扑克牌，没有小丑/星球/塔罗。\n- 每轮从 8 张手牌中选择 5 张打出，系统会计算得分。\n- 你可以弃牌来刷新手牌。出牌和弃牌在一局内各最多 5 次。\n- 使用指令：\n    p 0 1 2 3 4  出牌\n    d 0 1 2      弃牌\n    q             退出游戏\n"""
 
 
 def parse_indices(raw: str) -> List[int]:
@@ -16,6 +34,10 @@ def parse_indices(raw: str) -> List[int]:
 
 
 def main() -> None:  # pragma: no cover - exercised via manual play
+    if len(sys.argv) > 1 and sys.argv[1] in {"--ui", "ui"}:
+        _launch_ui()
+        return
+
     game = SimpleGame()
     game.start()
 
