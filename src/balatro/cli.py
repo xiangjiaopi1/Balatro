@@ -2,13 +2,32 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from typing import List
 
-if __package__ in {None, ""}:  # pragma: no cover - convenience for direct script execution
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from balatro.game import SimpleGame
-else:  # pragma: no cover - exercised via package imports and unit tests
-    from .game import SimpleGame
+
+def _import_game() -> "SimpleGame":
+    """Import ``SimpleGame`` with a fallback for direct script execution.
+
+    When the package is not installed, ``python src/balatro/cli.py`` would
+    normally fail to resolve relative imports. To keep that workflow working
+    without polluting ``sys.path`` for library users, we only add the project
+    root during direct execution.
+    """
+
+    try:  # Preferred path when installed or run via ``python -m balatro.cli``
+        from .game import SimpleGame  # type: ignore
+    except ImportError:
+        project_root = Path(__file__).resolve().parents[1]
+        if str(project_root) not in sys.path:
+            sys.path.append(str(project_root))
+        from balatro.game import SimpleGame
+
+    return SimpleGame
+
+
+# Resolve the game class once so the rest of the module can use it normally
+SimpleGame = _import_game()
 
 
 def _render_preview_to_file(error: Exception) -> None:

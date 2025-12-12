@@ -5,17 +5,32 @@ import sys
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
-from typing import Callable, Dict, Set
+from typing import Callable, Dict, Set, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageTk
 
-if __package__ in {None, ""}:  # pragma: no cover - convenience for direct script execution
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from balatro.cards import Card
-    from balatro.game import SimpleGame
-else:  # pragma: no cover - exercised via package imports and unit tests
-    from .cards import Card
-    from .game import SimpleGame
+
+def _import_game_and_cards() -> Tuple["SimpleGame", "Card"]:
+    """Import dependencies with a direct-execution fallback.
+
+    This keeps ``python src/balatro/ui.py`` working while avoiding permanent
+    ``sys.path`` tweaks when the package is properly installed.
+    """
+
+    try:
+        from .cards import Card  # type: ignore
+        from .game import SimpleGame  # type: ignore
+    except ImportError:
+        project_root = Path(__file__).resolve().parents[1]
+        if str(project_root) not in sys.path:
+            sys.path.append(str(project_root))
+        from balatro.cards import Card
+        from balatro.game import SimpleGame
+
+    return SimpleGame, Card
+
+
+SimpleGame, Card = _import_game_and_cards()
 CARD_SIZE = (150, 230)
 BACKGROUND_SIZE = (1920, 1080)
 ASSET_DIR = Path(__file__).resolve().parent / "assets"
