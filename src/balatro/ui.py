@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import messagebox
-from typing import Dict, Set
+from typing import Callable, Dict, Set
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageTk
 
@@ -17,6 +18,7 @@ else:  # pragma: no cover - exercised via package imports and unit tests
     from .game import SimpleGame
 CARD_SIZE = (150, 230)
 BACKGROUND_SIZE = (1920, 1080)
+ASSET_DIR = Path(__file__).resolve().parent / "assets"
 
 
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
@@ -44,7 +46,7 @@ class ArtLibrary:
 
     def background_image(self) -> Image.Image:
         if self._bg_image is None:
-            self._bg_image = self._render_background()
+            self._bg_image = self._load_asset_or_render("bg", BACKGROUND_SIZE, self._render_background)
         return self._bg_image
 
     def card_back(self) -> ImageTk.PhotoImage:
@@ -54,7 +56,7 @@ class ArtLibrary:
 
     def card_back_image(self) -> Image.Image:
         if self._back_image is None:
-            self._back_image = self._render_card_back()
+            self._back_image = self._load_asset_or_render("back1", CARD_SIZE, self._render_card_back)
         return self._back_image
 
     def card_face(self, card: Card, selected: bool = False) -> ImageTk.PhotoImage:
@@ -62,6 +64,22 @@ class ArtLibrary:
         if card not in cache:
             cache[card] = ImageTk.PhotoImage(self._render_card_face(card, highlight=selected))
         return cache[card]
+
+    def _load_asset_or_render(
+        self, basename: str, size: tuple[int, int], fallback: Callable[[], Image.Image]
+    ) -> Image.Image:
+        """Load a provided asset if present, otherwise draw it procedurally."""
+
+        # Check for custom assets placed in src/balatro/assets (e.g., bg.png, back1.png)
+        for ext in ("png", "jpg", "jpeg", "webp"):
+            candidate = ASSET_DIR / f"{basename}.{ext}"
+            if candidate.exists():
+                img = Image.open(candidate).convert("RGBA")
+                if img.size != size:
+                    img = img.resize(size, Image.LANCZOS)
+                return img
+
+        return fallback()
 
     def _render_card_face(self, card: Card, highlight: bool = False) -> Image.Image:
         bg_color = "#fdfcf7" if not highlight else "#f4efd9"
