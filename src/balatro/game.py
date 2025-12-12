@@ -11,16 +11,29 @@ from .scoring import HandResult, evaluate_hand
 class SimpleGame:
     deck: Deck = field(default_factory=Deck)
     hand: List[Card] = field(default_factory=list)
+    max_plays: int = 5
+    max_discards: int = 5
+    plays_remaining: int = field(init=False)
+    discards_remaining: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.plays_remaining = self.max_plays
+        self.discards_remaining = self.max_discards
 
     def start(self) -> None:
         """Reset the deck and draw a fresh set of cards."""
         # Reuse existing deck (handy for deterministic tests) but always reshuffle.
         self.deck.shuffle()
         self.hand = self.deck.draw(8)
+        self.plays_remaining = self.max_plays
+        self.discards_remaining = self.max_discards
 
     def play_cards(self, indices: List[int]) -> HandResult:
         if not self.hand:
             raise ValueError("Game has not been started. Call start() first.")
+
+        if self.plays_remaining <= 0:
+            raise ValueError("No plays remaining in this round.")
 
         if len(indices) != 5:
             raise ValueError("Exactly 5 card indices must be selected to score a hand.")
@@ -44,4 +57,36 @@ class SimpleGame:
             if draw_count:
                 self.hand.extend(self.deck.draw(draw_count))
 
+        self.plays_remaining -= 1
+
         return result
+
+    def discard_cards(self, indices: List[int]) -> None:
+        if not self.hand:
+            raise ValueError("Game has not been started. Call start() first.")
+
+        if self.discards_remaining <= 0:
+            raise ValueError("No discards remaining in this round.")
+
+        if not indices:
+            raise ValueError("At least one card index must be selected to discard.")
+
+        if len(set(indices)) != len(indices):
+            raise ValueError("Card indices must be unique.")
+
+        try:
+            for i in indices:
+                _ = self.hand[i]
+        except IndexError as exc:  # pragma: no cover - safety net
+            raise ValueError("Selected indices are out of range for the current hand.") from exc
+
+        for index in sorted(indices, reverse=True):
+            del self.hand[index]
+
+        needed = max(0, 8 - len(self.hand))
+        if needed:
+            draw_count = min(needed, self.deck.remaining())
+            if draw_count:
+                self.hand.extend(self.deck.draw(draw_count))
+
+        self.discards_remaining -= 1
