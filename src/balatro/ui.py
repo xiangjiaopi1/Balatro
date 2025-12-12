@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import os
+import sys
 import tkinter as tk
 from tkinter import messagebox
 from typing import Dict, Set
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageTk
 
-from .cards import Card
-from .game import SimpleGame
+if __package__ in {None, ""}:  # pragma: no cover - convenience for direct script execution
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from balatro.cards import Card
+    from balatro.game import SimpleGame
+else:  # pragma: no cover - exercised via package imports and unit tests
+    from .cards import Card
+    from .game import SimpleGame
 CARD_SIZE = (150, 230)
 BACKGROUND_SIZE = (1920, 1080)
 

@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import os
 import sys
 from typing import List
 
-from .game import SimpleGame
+if __package__ in {None, ""}:  # pragma: no cover - convenience for direct script execution
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from balatro.game import SimpleGame
+else:  # pragma: no cover - exercised via package imports and unit tests
+    from .game import SimpleGame
 
 
 def _launch_ui() -> None:
     """Start the Tk UI if a display is available."""
 
     try:
-        from .ui import UIMockPopup  # local import to avoid Tk dependency for CLI users
+        try:
+            from .ui import UIMockPopup  # local import to avoid Tk dependency for CLI users
+        except ImportError:
+            from balatro.ui import UIMockPopup  # pragma: no cover - direct execution helper
         import tkinter as tk
     except Exception as exc:  # pragma: no cover - runtime only
         raise RuntimeError("无法启动图形界面：Tkinter 未安装或不可用。") from exc
