@@ -396,6 +396,21 @@ class UIMockPopup:
         label = tk.Label(self.root, image=self.photo, bd=0)
         label.pack(fill="both", expand=True)
 
+        width, height = preview.size
+        self.root.geometry(f"{width}x{height}")
+        self._center_window(width, height)
+        self.root.bind("<Escape>", lambda _event: self.root.destroy())
+
+    def _center_window(self, width: int, height: int) -> None:
+        """Move the popup to the middle of the screen for visibility."""
+
+        self.root.update_idletasks()
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        x = (screen_w - width) // 2
+        y = (screen_h - height) // 2
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
     def _build_preview(self) -> Image.Image:
         base = self.assets.background_image().copy()
         draw = ImageDraw.Draw(base)
