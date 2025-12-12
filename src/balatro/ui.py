@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import sys
-import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox
-from typing import Callable, Dict, Set, Tuple
+from typing import TYPE_CHECKING, Callable, Dict, Set, Tuple
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageTk
+
+if TYPE_CHECKING:  # pragma: no cover - import for typing only
+    import tkinter as tk
+    from tkinter import messagebox
 
 
 def _import_game_and_cards() -> Tuple["SimpleGame", "Card"]:
@@ -41,6 +43,15 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
         return ImageFont.truetype("DejaVuSans-Bold.ttf", size)
     except OSError:  # pragma: no cover - fallback if font missing
         return ImageFont.load_default()
+
+
+def _import_tk() -> tuple["tk", "messagebox"]:
+    """Lazy import Tk to keep headless environments working."""
+
+    import tkinter as tk  # type: ignore
+    from tkinter import messagebox  # type: ignore
+
+    return tk, messagebox
 
 
 class ArtLibrary:
@@ -189,7 +200,10 @@ class ArtLibrary:
 class BalatroUI:
     """A tiny Tkinter UI to play the simplified Balatro demo."""
 
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: "tk.Tk") -> None:
+        self.tk, self.messagebox = _import_tk()
+        tk = self.tk
+
         self.root = root
         self.root.title("Balatro (简化版) UI")
         self.root.geometry(f"{BACKGROUND_SIZE[0]}x{BACKGROUND_SIZE[1]}")
@@ -198,7 +212,7 @@ class BalatroUI:
         self.assets = ArtLibrary()
         self.game = SimpleGame()
         self.selected_indices: Set[int] = set()
-        self.card_buttons: Dict[int, tk.Button] = {}
+        self.card_buttons: Dict[int, "tk.Button"] = {}
         self.card_images: Dict[int, ImageTk.PhotoImage] = {}
 
         self.status_var = tk.StringVar()
@@ -212,6 +226,8 @@ class BalatroUI:
         self.start_new_game()
 
     def _build_layout(self) -> None:
+        tk = self.tk
+
         bg_label = tk.Label(self.root, image=self.assets.background())
         bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
@@ -326,6 +342,8 @@ class BalatroUI:
         self._update_action_label()
 
     def _render_hand(self) -> None:
+        tk = self.tk
+
         for widget in self.hand_frame.winfo_children():
             widget.destroy()
         self.card_buttons.clear()
@@ -369,7 +387,7 @@ class BalatroUI:
         try:
             result = self.game.play_cards(sorted(self.selected_indices))
         except Exception as exc:  # broad by design for user feedback
-            messagebox.showerror("无法出牌", str(exc))
+            self.messagebox.showerror("无法出牌", str(exc))
             return
 
         self.selected_indices.clear()
@@ -386,7 +404,7 @@ class BalatroUI:
         )
 
         if not self.game.hand and self.game.deck.remaining() < 5:
-            messagebox.showinfo("游戏结束", "牌堆耗尽，本局结束。谢谢游玩！")
+            self.messagebox.showinfo("游戏结束", "牌堆耗尽，本局结束。谢谢游玩！")
             self.status_var.set("本局已结束，可点击重新开始。")
         else:
             self.status_var.set("选择下一手牌或重新开始。")
@@ -410,7 +428,7 @@ class BalatroUI:
         try:
             self.game.discard_cards(sorted(self.selected_indices))
         except Exception as exc:  # broad by design for user feedback
-            messagebox.showerror("无法弃牌", str(exc))
+            self.messagebox.showerror("无法弃牌", str(exc))
             return
 
         self.selected_indices.clear()
@@ -473,7 +491,10 @@ def render_preview_image(assets: ArtLibrary | None = None) -> Image.Image:
 class UIMockPopup:
     """Render a small static popup that mirrors the intended UI layout."""
 
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, root: "tk.Tk") -> None:
+        self.tk, _messagebox = _import_tk()
+        tk = self.tk
+
         self.root = root
         self.root.title("Balatro UI 预览")
         self.root.resizable(False, False)
@@ -503,8 +524,9 @@ class UIMockPopup:
 
 def main() -> None:  # pragma: no cover - manual UI entry point
     try:
+        tk, _messagebox = _import_tk()
         root = tk.Tk()
-    except tk.TclError as exc:  # pragma: no cover - runtime only
+    except Exception as exc:  # pragma: no cover - runtime only
         output_path = os.path.abspath("balatro_ui_preview.png")
         try:
             render_preview_image().save(output_path)
