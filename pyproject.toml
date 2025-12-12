@@ -8,6 +8,7 @@ requires-python = ">=3.10"
 
 [project.scripts]
 balatro = "balatro.cli:main"
+balatro-ui = "balatro.ui:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
