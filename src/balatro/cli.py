@@ -11,8 +11,24 @@ else:  # pragma: no cover - exercised via package imports and unit tests
     from .game import SimpleGame
 
 
+def _render_preview_to_file(error: Exception) -> None:
+    """Fallback when Tk is unavailable: export the preview image and exit gracefully."""
+
+    try:
+        try:
+            from .ui import render_preview_image  # local import to avoid Tk dependency for CLI users
+        except ImportError:  # pragma: no cover - direct execution helper
+            from balatro.ui import render_preview_image
+
+        output_path = os.path.abspath("balatro_ui_preview.png")
+        render_preview_image().save(output_path)
+        print(f"无法弹出窗口：{error}\n已将 UI 预览导出到：{output_path}")
+    except Exception as exc:  # pragma: no cover - runtime only
+        raise RuntimeError("无法生成 UI 预览图，也无法启动图形界面。") from exc
+
+
 def _launch_ui() -> None:
-    """Start the Tk UI if a display is available."""
+    """Start the Tk UI if a display is available, otherwise export a preview image."""
 
     try:
         try:
@@ -21,12 +37,14 @@ def _launch_ui() -> None:
             from balatro.ui import UIMockPopup  # pragma: no cover - direct execution helper
         import tkinter as tk
     except Exception as exc:  # pragma: no cover - runtime only
-        raise RuntimeError("无法启动图形界面：Tkinter 未安装或不可用。") from exc
+        _render_preview_to_file(exc)
+        return
 
     try:
         root = tk.Tk()
     except tk.TclError as exc:  # pragma: no cover - runtime only
-        raise RuntimeError("无法启动图形界面：当前环境没有显示器。") from exc
+        _render_preview_to_file(exc)
+        return
 
     # Show a compact popup preview instead of the full interactive board
     root.withdraw()

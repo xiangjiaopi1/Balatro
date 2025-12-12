@@ -388,6 +388,55 @@ class BalatroUI:
         self.status_var.set("已弃牌，补充了新牌。继续选择或出牌。")
 
 
+def render_preview_image(assets: ArtLibrary | None = None) -> Image.Image:
+    """Build the popup preview image without requiring a display."""
+
+    assets = assets or ArtLibrary()
+    base = assets.background_image().copy()
+    draw = ImageDraw.Draw(base)
+
+    # Top info bars
+    draw.rectangle([0, 0, BACKGROUND_SIZE[0], 96], fill="#0b361b")
+    font_header = _load_font(26)
+    font_body = _load_font(32)
+
+    draw.text((24, 18), "当前得分", font=font_header, fill="#f5f5f5")
+    draw.text((24, 54), "123,456", font=font_body, fill="#ffd166")
+
+    right_label = "剩余出牌 / 弃牌"
+    right_value = "5 / 5"
+    right_label_size = draw.textbbox((0, 0), right_label, font=font_header)
+    right_value_size = draw.textbbox((0, 0), right_value, font=font_body)
+
+    draw.text((BACKGROUND_SIZE[0] - right_label_size[2] - 24, 18), right_label, font=font_header, fill="#f5f5f5")
+    draw.text((BACKGROUND_SIZE[0] - right_value_size[2] - 24, 54), right_value, font=font_body, fill="#9ae5ff")
+
+    # Status strip
+    draw.rectangle([BACKGROUND_SIZE[0] * 0.05, 108, BACKGROUND_SIZE[0] * 0.95, 144], fill="#154a2a")
+    draw.text((BACKGROUND_SIZE[0] * 0.06, 116), "打出牌型：皇家同花顺，筹码：120，倍率：x5，本次得分：600", font=_load_font(20), fill="#f9f9f9")
+
+    # Card placeholders
+    back_img = assets.card_back_image()
+    spacing = 20
+    total_width = CARD_SIZE[0] * 8 + spacing * 7
+    start_x = (BACKGROUND_SIZE[0] - total_width) // 2
+    y = int(BACKGROUND_SIZE[1] * 0.55)
+    for i in range(8):
+        x = start_x + i * (CARD_SIZE[0] + spacing)
+        base.paste(back_img, (x, y), back_img)
+
+    # Footer texts
+    footer_y = int(BACKGROUND_SIZE[1] * 0.9)
+    draw.text((BACKGROUND_SIZE[0] * 0.06, footer_y), "牌堆剩余：42 张", font=_load_font(20), fill="#f5f5f5")
+    status_text = "新一局开始：点击卡牌以选择。"
+    status_bbox = draw.textbbox((0, 0), status_text, font=_load_font(20))
+    draw.text((BACKGROUND_SIZE[0] - status_bbox[2] - BACKGROUND_SIZE[0] * 0.06, footer_y), status_text, font=_load_font(20), fill="#e0e0e0")
+
+    # Scale down to a compact popup
+    preview = base.resize((960, 540), Image.LANCZOS)
+    return preview
+
+
 class UIMockPopup:
     """Render a small static popup that mirrors the intended UI layout."""
 
@@ -397,7 +446,7 @@ class UIMockPopup:
         self.root.resizable(False, False)
 
         self.assets = ArtLibrary()
-        preview = self._build_preview()
+        preview = render_preview_image(self.assets)
 
         self.photo = ImageTk.PhotoImage(preview)
         label = tk.Label(self.root, image=self.photo, bd=0)
@@ -417,51 +466,6 @@ class UIMockPopup:
         x = (screen_w - width) // 2
         y = (screen_h - height) // 2
         self.root.geometry(f"{width}x{height}+{x}+{y}")
-
-    def _build_preview(self) -> Image.Image:
-        base = self.assets.background_image().copy()
-        draw = ImageDraw.Draw(base)
-
-        # Top info bars
-        draw.rectangle([0, 0, BACKGROUND_SIZE[0], 96], fill="#0b361b")
-        font_header = _load_font(26)
-        font_body = _load_font(32)
-
-        draw.text((24, 18), "当前得分", font=font_header, fill="#f5f5f5")
-        draw.text((24, 54), "123,456", font=font_body, fill="#ffd166")
-
-        right_label = "剩余出牌 / 弃牌"
-        right_value = "5 / 5"
-        right_label_size = draw.textbbox((0, 0), right_label, font=font_header)
-        right_value_size = draw.textbbox((0, 0), right_value, font=font_body)
-
-        draw.text((BACKGROUND_SIZE[0] - right_label_size[2] - 24, 18), right_label, font=font_header, fill="#f5f5f5")
-        draw.text((BACKGROUND_SIZE[0] - right_value_size[2] - 24, 54), right_value, font=font_body, fill="#9ae5ff")
-
-        # Status strip
-        draw.rectangle([BACKGROUND_SIZE[0] * 0.05, 108, BACKGROUND_SIZE[0] * 0.95, 144], fill="#154a2a")
-        draw.text((BACKGROUND_SIZE[0] * 0.06, 116), "打出牌型：皇家同花顺，筹码：120，倍率：x5，本次得分：600", font=_load_font(20), fill="#f9f9f9")
-
-        # Card placeholders
-        back_img = self.assets.card_back_image()
-        spacing = 20
-        total_width = CARD_SIZE[0] * 8 + spacing * 7
-        start_x = (BACKGROUND_SIZE[0] - total_width) // 2
-        y = int(BACKGROUND_SIZE[1] * 0.55)
-        for i in range(8):
-            x = start_x + i * (CARD_SIZE[0] + spacing)
-            base.paste(back_img, (x, y), back_img)
-
-        # Footer texts
-        footer_y = int(BACKGROUND_SIZE[1] * 0.9)
-        draw.text((BACKGROUND_SIZE[0] * 0.06, footer_y), "牌堆剩余：42 张", font=_load_font(20), fill="#f5f5f5")
-        status_text = "新一局开始：点击卡牌以选择。"
-        status_bbox = draw.textbbox((0, 0), status_text, font=_load_font(20))
-        draw.text((BACKGROUND_SIZE[0] - status_bbox[2] - BACKGROUND_SIZE[0] * 0.06, footer_y), status_text, font=_load_font(20), fill="#e0e0e0")
-
-        # Scale down to a compact popup
-        preview = base.resize((960, 540), Image.LANCZOS)
-        return preview
 
 
 def main() -> None:  # pragma: no cover - manual UI entry point
